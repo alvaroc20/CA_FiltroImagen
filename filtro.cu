@@ -83,7 +83,6 @@ int main(int argc, char *argv[]){
     printf("CPU: %d hardware threads\n", std::thread::hardware_concurrency());
     printf("GPU Description: %s, CUDA %d.%d, %zd Mbytes global memory, %d CUDA cores\n",
     devProp.name, devProp.major, devProp.minor, devProp.totalGlobalMem / 1048576, cores);
-    printf("argv: %s\n", argv[2]);
 
 
     // Cargar la imagen
