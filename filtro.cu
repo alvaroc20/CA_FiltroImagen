@@ -9,10 +9,15 @@ Uso:
     make compile
     make run
 
+Para cambiar la imagen, hacerlo desde el Makefile
 ******************************************************/
 
-
-
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 #include <stdio.h>
 #include <assert.h>
@@ -24,12 +29,13 @@ Uso:
 #include <chrono>
 #include <iostream>
 #include <string.h>
-
+#include <stdexcept>
 
 #define N atoi(argv[1])
 
+/*El kernel está basado en un repositorio de LevidRodriguez*/
 
-__global__ void sobelFilterGPU(unsigned char* srcImg, unsigned char* dstImg, const unsigned int width, const unsigned int height){
+__global__ void filtroSobelGPU(unsigned char* srcImg, unsigned char* dstImg, const unsigned int width, const unsigned int height){
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if( x > 0 && y > 0 && x < width-1 && y < height-1) {
@@ -48,7 +54,7 @@ void checkCUDAError(const char* msg)
 	cudaError_t err = cudaGetLastError();
   	if (cudaSuccess != err) 
   	{
-    		fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
+    		fprintf(stderr, ANSI_COLOR_RED "Cuda error: %s: %s.\n" ANSI_COLOR_RESET, msg, cudaGetErrorString(err));
     		exit(EXIT_FAILURE);
   	}
 }
@@ -57,13 +63,15 @@ void checkCUDAError(const char* msg)
 
 cv::Mat loadImage(char image_name[]){
     using namespace cv;
-
+    
     Mat image = imread(image_name, 255);
     cv::cvtColor(image, image, cv::COLOR_RGB2GRAY);
 
+
     if(image.empty()) {
-        std::cout << "Error: La imagen no se ha cargado correctamente" << std::endl;
+        std::cout << ANSI_COLOR_RED "Error: La imagen no se ha cargado correctamente" ANSI_COLOR_RESET<< std::endl;
     }
+
     return image;
 }
 
@@ -71,6 +79,13 @@ cv::Mat loadImage(char image_name[]){
 
 int main(int argc, char *argv[]){
     using namespace cv;
+
+    // Control de la compilacion
+    if(argc != 3){
+        std::cout << ANSI_COLOR_RED "Error en la entrada de argumentos, asegurese de que está haciendo buen uso de la sintaxis.\n" << std::endl;
+        std::cout << "Uso: ./filtro <n_hilos> <nombreImagen>\n" ANSI_COLOR_RESET << std::endl;
+        return -1;
+    }
 
     // Definir las propiedades de CPU y GPU
     cudaDeviceProp devProp;
@@ -80,13 +95,21 @@ int main(int argc, char *argv[]){
 
     /*Imprimir las propiedades de CPU y GPU. 
     Esta bloque de codigo esta obtenido desde varios repositorios en los que vi lo mismo*/
-    printf("CPU: %d hardware threads\n", std::thread::hardware_concurrency());
-    printf("GPU Description: %s, CUDA %d.%d, %zd Mbytes global memory, %d CUDA cores\n",
+    std::cout << "\n**********************************************************************************" << std::endl;
+    printf(ANSI_COLOR_BLUE "CPU: %d hardware threads\n" ANSI_COLOR_RESET, std::thread::hardware_concurrency());
+    printf(ANSI_COLOR_GREEN "GPU Description: %s, CUDA %d.%d, %zd Mbytes global memory, %d CUDA cores\n" ANSI_COLOR_RESET,
     devProp.name, devProp.major, devProp.minor, devProp.totalGlobalMem / 1048576, cores);
+    std::cout << "**********************************************************************************\n" << std::endl;
 
 
-    // Cargar la imagen
-    Mat image = loadImage(argv[2]);
+    // Cargar la imagen, utilizo la libreria cv2 como se ve en multiples paginas.
+    Mat image;
+    try{
+    image = loadImage(argv[2]);
+    }catch(Exception e){
+        std::cout << ANSI_COLOR_RED "Error: El nombre de imagen que esta seleccionando no existe" ANSI_COLOR_RESET<< std::endl;
+        return -1;
+    }
     
 
     // Definiciones e inicializaciones de los recursos necesarios
@@ -101,27 +124,27 @@ int main(int argc, char *argv[]){
     cudaStreamCreate(&stream);
 
 
-    // Asignar memoria para las imágenes en memoria GPU.
+    // reservamos espacio en la memoria global del device
     cudaMalloc( (void**)&gpu_src, (image.cols * image.rows));
     cudaMalloc( (void**)&gpu_sobel, (image.cols * image.rows));
 
-    // Transfiera del host al device y configura la matriz resultante a 0s
+    // copia del host al device y rellena la matriz resultante de 0.
     cudaMemcpy(gpu_src, image.data, (image.cols*image.rows), cudaMemcpyHostToDevice);
     cudaMemset(gpu_sobel, 0, (image.cols*image.rows));
 
     // configura los dim3 para que el gpu los use como argumentos, hilos por bloque y número de bloques
-    dim3 threadsPerBlock(N, N, 1);
-    dim3 numBlocks(ceil(image.cols/N), ceil(image.rows/N), 1);
+    dim3 hilosBloque(N, N, 1);
+    dim3 n_bloques(ceil(image.cols/N), ceil(image.rows/N), 1);
 
 
 
     // Ejecutar el filtro sobel utilizando la GPU.
     cudaEventRecord(start);
     start_time = std::chrono::system_clock::now();
-    sobelFilterGPU<<< numBlocks, threadsPerBlock, 0, stream >>>(gpu_src, gpu_sobel, image.cols, image.rows);
+    filtroSobelGPU<<< n_bloques, hilosBloque, 0, stream >>>(gpu_src, gpu_sobel, image.cols, image.rows);
     cudaError_t cudaerror = cudaDeviceSynchronize();
     if ( cudaerror != cudaSuccess ) 
-        std::cout <<  "Cuda failed to synchronize: " << cudaGetErrorName( cudaerror ) <<std::endl;
+        std::cout <<  ANSI_COLOR_RED "Cuda falló al sincronizar: " ANSI_COLOR_RESET<< cudaGetErrorName( cudaerror ) <<std::endl;
     std::chrono::duration<double> crono_gpu = std::chrono::system_clock::now() - start_time;
     
 
@@ -140,8 +163,9 @@ int main(int argc, char *argv[]){
 
 
 
-    // Imprimir el resultado de tiempo del cronometro
-    std::cout << "Tiempo de ejecución en CUDA:   = " << 1000*crono_gpu.count() <<" ms"<<std::endl;
+    // Imprimir el resultado de tiempo del cronometro y el nombre de la imagen original
+    std::cout << ANSI_COLOR_YELLOW "Imagen Original:   = " ANSI_COLOR_RESET << argv[2]<<std::endl;
+    std::cout << ANSI_COLOR_MAGENTA "Tiempo de ejecución en CUDA:   = " ANSI_COLOR_RESET << 1000*crono_gpu.count() <<" ms"<<std::endl;
 
 
     // Crear la nueva imagen
@@ -149,7 +173,7 @@ int main(int argc, char *argv[]){
     strcpy(new_image, argv[2]);
     strcat(new_image, "_sobel.png");
     cv::imwrite(new_image,image);
-
+    std::cout << ANSI_COLOR_MAGENTA "Imagen Sobel:   = " ANSI_COLOR_RESET << new_image<<std::endl;
 
     return 0;
 }

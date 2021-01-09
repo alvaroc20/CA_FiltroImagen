@@ -1,7 +1,7 @@
 CFLAGS=-Wno-deprecated-gpu-targets -O2 -Xcompiler -fopenmp -std=c++11
 LDLIBS=`pkg-config --cflags --libs opencv4`
 HILOS:=32
-nombreImagen:="teresa.jpeg"
+nombreImagen:="aviones.jpeg"
 compile:
 	nvcc filtro.cu -o filtro $(CFLAGS) $(LDLIBS)
 
