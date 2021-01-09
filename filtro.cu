@@ -33,7 +33,12 @@ Para cambiar la imagen, hacerlo desde el Makefile
 
 #define N atoi(argv[1])
 
-/*El kernel está basado en un repositorio de LevidRodriguez*/
+/* 
+Autor: LevidRodriguez
+Plataforma: GitHub
+Enlace: https://github.com/LevidRodriguez/Sobel_with_OpenCV-CUDA 
+Ult.Publicacion: Jun,28,2019
+*/
 
 __global__ void filtroSobelGPU(unsigned char* srcImg, unsigned char* dstImg, const unsigned int width, const unsigned int height){
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -93,8 +98,16 @@ int main(int argc, char *argv[]){
     int cores = devProp.multiProcessorCount;
 
 
-    /*Imprimir las propiedades de CPU y GPU. 
-    Esta bloque de codigo esta obtenido desde varios repositorios en los que vi lo mismo*/
+
+    
+    /* 
+    Autor: Lucas Carpenter
+    Plataforma: GitHub
+    Enlace: https://github.com/lukas783/CUDA-Sobel-Filter
+    Ult.Publicacion: Oct,18,2017
+    */  
+
+    //Imprimir las propiedades de CPU y GPU.
     std::cout << "\n**********************************************************************************" << std::endl;
     printf(ANSI_COLOR_BLUE "CPU: %d hardware threads\n" ANSI_COLOR_RESET, std::thread::hardware_concurrency());
     printf(ANSI_COLOR_GREEN "GPU Description: %s, CUDA %d.%d, %zd Mbytes global memory, %d CUDA cores\n" ANSI_COLOR_RESET,
@@ -102,7 +115,10 @@ int main(int argc, char *argv[]){
     std::cout << "**********************************************************************************\n" << std::endl;
 
 
-    // Cargar la imagen, utilizo la libreria cv2 como se ve en multiples paginas.
+
+
+
+    // Cargar la imagen mediante la libreria cv2.
     Mat image;
     try{
     image = loadImage(argv[2]);
