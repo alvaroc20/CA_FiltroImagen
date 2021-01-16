@@ -186,6 +186,5 @@ int main(int argc, char *argv[]){
     strcat(new_image, "_sobel.png");
     cv::imwrite(new_image,image);
     std::cout << ANSI_COLOR_MAGENTA "Imagen Sobel:   = " ANSI_COLOR_RESET << new_image<<std::endl;
-
     return 0;
 }
