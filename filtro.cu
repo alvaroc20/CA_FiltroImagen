@@ -50,6 +50,7 @@ __global__ void filtroSobelGPU(unsigned char* srcImg, unsigned char* dstImg, con
     }
 }
 
+
 // Comprobar errores de CUDA
 cudaError_t testCuErr(cudaError_t result)
 {
@@ -103,12 +104,13 @@ int main(int argc, char *argv[]){
     Ult.Publicacion: Oct,18,2017
     */  
 
-    //Imprimir las propiedades de CPU y GPU.
-    std::cout << "\n**********************************************************************************" << std::endl;
+    // Imprimir las propiedades de CPU y GPU.
+    std::cout << "\n**************************************************************************************" << std::endl;
     printf(ANSI_COLOR_BLUE "CPU: %d hardware threads\n" ANSI_COLOR_RESET, std::thread::hardware_concurrency());
     printf(ANSI_COLOR_GREEN "GPU Description: %s, CUDA %d.%d, %zd Mbytes global memory, %d CUDA cores\n" ANSI_COLOR_RESET,
     devProp.name, devProp.major, devProp.minor, devProp.totalGlobalMem / 1048576, cores);
-    std::cout << "**********************************************************************************\n" << std::endl;
+    std::cout << ANSI_COLOR_BLUE "Hilos:   = "  << N << ANSI_COLOR_RESET<<std::endl;
+    std::cout << "**************************************************************************************\n" << std::endl;
 
 
 
@@ -179,12 +181,12 @@ int main(int argc, char *argv[]){
     std::cout << ANSI_COLOR_YELLOW "Imagen Original:   = " ANSI_COLOR_RESET << argv[2]<<std::endl;
     std::cout << ANSI_COLOR_MAGENTA "Tiempo de ejecución en CUDA:   = " ANSI_COLOR_RESET << 1000*crono_gpu.count() <<" ms"<<std::endl;
 
-
     // Crear la nueva imagen
     char new_image[50];
     strcpy(new_image, argv[2]);
     strcat(new_image, "_sobel.png");
     cv::imwrite(new_image,image);
-    std::cout << ANSI_COLOR_MAGENTA "Imagen Sobel:   = " ANSI_COLOR_RESET << new_image<<std::endl;
+    system((std::string{"mv  "} + new_image + " sobelImages/").c_str()); 
+    std::cout << ANSI_COLOR_YELLOW "Imagen Sobel:   = " ANSI_COLOR_RESET << new_image<<std::endl;
     return 0;
 }
